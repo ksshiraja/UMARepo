@@ -1,0 +1,14 @@
+<!--
+  This file launches a costmap with a fake map -> base_link transform
+  and a fake map -> velodyne transform so it can run without needing 
+  localization. That can cause some weird effects but is useful for testing
+-->
+
+<launch>
+  <node pkg="tf" type="static_transform_publisher" 
+    respawn="true" 
+    name="fake_map_to_base_link_transform_publisher" 
+    args="0 0 0 0 0 0 map base_link 100"
+  />
+  <include file="$(find uma_perception)/launch/costmaps.launch" />
+</launch>

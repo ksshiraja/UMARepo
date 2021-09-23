@@ -1,0 +1,177 @@
+#!/usr/bin/env python
+
+from datetime import datetime
+import socket
+import rospy
+import actionlib
+from threading import Lock
+
+from sensor_msgs.msg import NavSatFix
+from std_msgs.msg import Bool, String
+from uma_controls_external_interface.msg import NetworkCommandAction, NetworkCommandGoal, NetworkCommandResult
+
+lat = 0.0
+long = 0.0
+estop = True
+auto = False
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+network_mutex = Lock()
+
+def genChecksum(msg):
+    sum = 0
+    for x in msg:
+        sum = sum ^ ord(x)
+
+    checksumString = hex(sum).split("x")[1]
+    return checksumString.zfill(2).upper()
+
+def format_gps(gps_data):
+    return round(gps_data.latitude, 5), round(gps_data.longitude, 5)
+
+def format_mode(estop, auto):
+    if(estop):
+        return 3 # Estopped
+    elif(auto):
+        return 2 # Autonomous
+    else:
+        return 1 # Manual
+
+def datetime_strings():
+    dt = datetime.now()
+    datestring = str(dt.day).zfill(2) + str(dt.month).zfill(2) + str(dt.year % 100).zfill(2)
+    timestring = str(dt.hour).zfill(2) + str(dt.minute).zfill(2) + str(dt.second).zfill(2)
+    return datestring, timestring
+
+def genDetection(type, value):
+    prefix = "RBFLG" if type == "flag" else "RBDOK"
+    datestring, timestring = datetime_strings()
+    basic_msg = "{type},{date},{time},{team},{val}"
+    msg = basic_msg.format(type=prefix, date=datestring, time=timestring, team="UOFM", val=str(value))
+    return msg
+
+def genHeartbeat(lat, long, mode):
+    basic_msg = "RBHRB,{date},{time},{latitude},{ns},{longitude},{ew},{teamID},{mode}"
+
+    datestring, timestring = datetime_strings()
+    eastWest = "W" if long >= 0 else "E"
+    northSouth = "N" if lat >= 0 else "S"
+
+    msg = basic_msg.format(date=datestring, time=timestring, latitude=str(abs(lat)), ns=northSouth, longitude=str(abs(long)), ew=eastWest, teamID="UOFM", mode=str(mode))
+    return msg
+
+def valid_checksum(msg):
+    msg_parts = msg[1:].split("*")
+
+    if len(msg_parts) < 2:
+        return False
+
+    return genChecksum(msg_parts[0]) == msg_parts[1].strip()
+
+def validateResponse(msg, response, use_checksum=True):
+    if len(msg) < 6:
+        print("Message too short!")
+        return False
+
+    if use_checksum and not valid_checksum(response):
+        print("Invalid checksum!")
+        return False
+
+    return msg[2:5] == response[3:6]
+
+def sendMsg(msg, s):
+    network_mutex.acquire()
+    formal_msg = "${body}*{checksum}\r\n".format(body=msg, checksum=str(genChecksum(msg)))
+    s.send(formal_msg)
+    data = s.recv(1024)
+
+    success = validateResponse(msg, data)
+    network_mutex.release()
+    return success, data
+
+def navsatCallback(data):
+    lat, long = format_gps(data)
+
+def estopCallback(data):
+    global estop
+    estop = data.data
+
+def autoCallback(data):
+    global auto
+    auto = data.data
+
+class NetworkAction(object):
+    _result = NetworkCommandResult()
+
+    def __init__(self, name):
+        self._action_name = name
+        self._as = actionlib.SimpleActionServer(self._action_name, NetworkCommandAction, execute_cb=self.execute_cb, auto_start=False)
+        self._as.start()
+
+    def execute_cb(self, goal):
+        global s
+        r = rospy.Rate(10)
+        success = False
+
+        detection_type = "unknown"
+        detection_value = goal.identification
+
+        if goal.requestType == goal.TYPE_IDENTIFY_DOCK:
+            detection_type = "dock"
+        elif goal.requestType == goal.TYPE_IDENTIFY_FLAG:
+            detection_type = "flag"
+        else:
+            self._result.result = "UMA_ERR: Unknown request type"
+            self._result.success = False
+            self._as.set_succeeded(self._result)
+            return
+
+        msg = genDetection(detection_type, detection_value)
+        success, result = sendMsg(msg, s)
+        self._result.success = success
+        self._result.result = result
+
+        if(success):
+            self._as.set_succeeded(self._result)
+        else:
+            self._as.set_succeeded(self._result)
+
+def mainThread():
+    global estop
+    global s
+
+    navsat_ros_channel = rospy.get_param("gps_ros_channel", "/gps/fix")
+    estop_ros_channel = rospy.get_param("estop_ros_channel", "/estop_triggered")
+    auto_ros_channel = rospy.get_param("auto_ros_channel", "/autonomous_mode")
+    network_interface_ros_channel = rospy.get_param("network_ros_channel", "network_interface")
+    network_status_ros_channel = rospy.get_param("network_ros_channel", "network_interface/status")
+    
+    ip = rospy.get_param("network_ip", "192.168.66.2")
+    port = rospy.get_param("network_port", 9000)
+
+    heartbeatGood = False
+
+    rospy.init_node("network_driver", anonymous=False)
+    rospy.Subscriber(navsat_ros_channel, NavSatFix, navsatCallback)
+    rospy.Subscriber(estop_ros_channel, Bool, estopCallback)
+    rospy.Subscriber(auto_ros_channel, Bool, autoCallback)
+    pub = rospy.Publisher(network_status_ros_channel, String, queue_size=10)
+    r = rospy.Rate(1)
+
+    a = NetworkAction("uma_network")
+
+    buffersize =  1024
+    s.connect((ip, port))
+
+    while not rospy.is_shutdown():
+        mode = format_mode(estop, auto)
+        success, message = sendMsg(genHeartbeat(lat, long, mode), s)
+
+        if not success:
+            pub.publish("Heartbeat FAILED: " + message)
+        else:
+            pub.publish("Heartbeat succeeded: " + message)
+        r.sleep()
+
+    conn.close()
+
+mainThread()

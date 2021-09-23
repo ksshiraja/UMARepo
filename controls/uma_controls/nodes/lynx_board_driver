@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+
+import serial
+import rospy
+from uma_controls_external_interface.msg import Thruster
+from uma_controls_external_interface.msg import Thrusters
+from lynx.lynx_board import LynxBoard
+from std_msgs.msg import Bool
+import actionlib
+
+def callback(data, driver):
+    thruster_array = data.thrusters
+    for thruster in thruster_array:
+        if not driver.write_to_interface(thruster.channel, thruster.on_time):
+            rospy.logerr("LynxBoard recieved invalid command")
+        
+if __name__ == '__main__':
+    #check for ros params, else use defaults
+    lynx_port = rospy.get_param("lynx_tty", "/dev/uma-ssc32u")
+    lynx_baud = rospy.get_param("lynx_baudrate", 115200)
+    lynx_timeout = rospy.get_param("lynx_timeout", 1000)
+    lynx_ros_channel = rospy.get_param("lynx_ros_channel", "/control/thrusters")
+
+    left_thruster_channel = rospy.get_param("/thruster_left", 4)
+    right_thruster_channel = rospy.get_param("/thruster_right", 2)
+    forward_thruster_channel = rospy.get_param("/thruster_forward", 1)
+    back_thruster_channel = rospy.get_param("/thruster_back", 3)
+    thruster_channels = [left_thruster_channel, right_thruster_channel,
+                         forward_thruster_channel, back_thruster_channel]
+
+    #lynx board setup
+    interface = serial.Serial(lynx_port, lynx_baud, timeout=lynx_timeout)
+    driver = LynxBoard(interface)
+
+    #lynx input publisher setup
+    nameOfInputPublisherTopic = rospy.get_param('/lynx_input_pub_topic_name','/button_pressed')
+    input_pub = rospy.Publisher(nameOfInputPublisherTopic, Bool, queue_size=10)
+
+    #rospy setup
+    rospy.init_node("lynx_driver", anonymous=False)
+    rospy.Subscriber(lynx_ros_channel, Thrusters, callback, callback_args=driver)
+    while (not rospy.is_shutdown()):
+
+        # button pushing feedback. read_from_interface can be passed any letter of port on the lynx board to
+        # get input from that port, though some are better suited to this task (they don't have additional uses)
+        # D is good for getting input as are I think B and C. googling the lynx board may give better information.
+        # Note: threshold may have been arbitrarily chosen, and should be physically calibrated unless documented
+        # otherwise
+        rospy.sleep(0.02)
+        outputFromLynxBoard = driver.read_from_interface("D")
+        outputFromLynxBoard = ord(outputFromLynxBoard)
+        threshold = 150
+        input_pub.publish(outputFromLynxBoard > threshold)
+        print("++++++++")
+        print(threshold)
+        print(outputFromLynxBoard)
+
+    # Kill the thrusters
+    for channel in thruster_channels:
+        driver.write_to_interface(channel, 1500)
+
+    rospy.spin()

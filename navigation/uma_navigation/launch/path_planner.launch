@@ -1,0 +1,13 @@
+<!--
+  This file launches every node needed to run the path planner
+-->
+
+<launch>
+  <node pkg="uma_navigation" type="path_planner" respawn="true" name="path_planning" args="-d"/>
+  <node pkg="uma_navigation" type="path_visualizer" respawn="true" name="path_visualizer" />
+  <param name="maximum_path_sparsity" type="double" value="inf" />
+	<param name="autonomous_navigation_path_sparsity" type="double" value="inf" />
+	<param name="epsilon_path_trimming" type="double" value="0.8" />
+	<param name="controls_node" type="string" value="" />
+	<param name="update_costs_radius" type="double" value="3.0" />
+</launch>

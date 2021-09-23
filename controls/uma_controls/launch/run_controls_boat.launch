@@ -1,0 +1,5 @@
+<launch>
+    <rosparam file="$(find uma_controls)/params.yml" />
+    <include file="$(find uma_controls)/launch/drivers.launch" />
+    <node pkg="uma_controls" type="battery_level" name="battery_level" />
+</launch>

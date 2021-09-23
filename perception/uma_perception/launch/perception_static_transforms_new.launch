@@ -1,0 +1,36 @@
+<!--
+  These transforms are based on the following information received from
+  the hulls and systems team
+
+  Length: 1.0668 meters
+  Beam (width): 0.6096 meters
+  Height: 0.2540 meters
+  Position of velodyne forward of center: 0.4445 meters
+  Elevation of velodyne: 0.09525 meters
+  Position of GPS forward of center: 0.1524 meters
+  Elevation of GPS: 0.1905 meters
+  Position of camera: 0.5080 meters
+  Elevation of camera: 0.1778 meters
+  NOTE: Velodyne and camera are tilted 4 degrees downward.
+-->
+
+<launch>
+  <node pkg="tf" type="static_transform_publisher" 
+    respawn="true" 
+    name="velodyne_static_transform_publisher" 
+    args="0.4445 0.0 0.09525 0.0 0.06981 0.0 base_link velodyne 100"
+  />
+
+  <node pkg="tf" type="static_transform_publisher" 
+    respawn="true" 
+    name="camera_static_transform_publisher" 
+    args="0.0 0.0 0.0 0.0 0.0 0.0 velodyne camera 100"
+  />
+
+  <node pkg="tf" type="static_transform_publisher" 
+    respawn="true" 
+    name="camera_optical_static_transform_publisher" 
+    args="0 0.0 0 -1.57 0 -1.57 camera camera_optical 100"
+  />
+
+</launch>

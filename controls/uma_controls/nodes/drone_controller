@@ -1,0 +1,106 @@
+#!/usr/bin/env python
+
+import rospy
+import actionlib
+import geometry_msgs
+import nav_msgs
+import uma_controls_external_interface.msg as controls_msgs
+from pymavlink import mavutil
+import time
+import tf
+import geodesy
+
+class DroneController:
+    def __init__(self):
+        self.drone = mavutil.mavlink_connection("/dev/uma-holybro", baud = 57600)
+
+class TaskServer:
+    def __init__(self, name):
+        self._name = name
+        self._connection = DroneController()
+        self._server = actionlib.SimpleActionServer(name, controls_msgs.DroneControlAction,
+                                                execute_cb=self.execute_cbk, auto_start=False)
+        self._server.start()
+        print "Server started"
+
+
+    def execute_cbk(self, goal):
+        _feedback = controls_msgs.DroneControlFeedback # Drone state
+        _result = controls_msgs.DroneControlResult # Number classification
+
+        # Send dock coords to engage drone, timing out if it doesn't get response
+        start_eng_time = time.time()
+        last_sent_eng_time = time.time()
+        seq = 0
+
+        while(not self._connection.drone.recv_match(type="UMA_DRONE_ENGAGE_ACK", blocking=True, timeout=1)):
+            if(time.time() - start_eng_time > 10):
+                print "Not getting engage response from drone"
+                return 
+
+            # Request drone to engage every second
+            if(time.time() - last_sent_eng_time > 1):
+
+                self._connection.drone.mav.uma_drone_engage_send(
+                    seq,
+                    "yeet",
+                    goal.dock_location.point.x,
+                    goal.dock_location.point.y,
+                    0
+                )
+                seq += 1
+
+        # We have acknowledgement that drone is engaged and active
+
+        classification_msg = self._connection.drone.recv_match(type="UMA_DRONE_NUM_CLASS", blocking=True, timeout=1)
+        last_sent_heartbeat_time = time.time()
+        last_recv_heartbeat_time = time.time()
+
+        # Keep checking for a recieved classification from drone as long as drone is active
+        while(not classification_msg):
+
+            classification_msg = self._connection.drone.recv_match(type="UMA_DRONE_NUM_CLASS", blocking=True, timeout=1)
+
+            # Send heartbeat
+            # Last 4 params are lat, lon, alt, and time active in seconds - coords for boat should be used when we need to land on boat
+            if(time.time() - last_sent_heartbeat_time > 1):
+                self._connection.drone.mav.uma_heartbeat_send(
+                    mavutil.mavlink.UMA_HEARTBEAT_SENDER_BOAT,
+                    mavutil.mavlink.UMA_HEARTBEAT_STATUS_ACTIVE,
+                    0, 
+                    0, 
+                    0, 
+                    0
+                )
+                last_sent_heartbeat_time = time.time()
+
+            # Receive heartbeat
+            last_recv_heartbeat = self._connection.drone.recv_match(type="UMA_HEARTBEAT", blocking=True, timeout=5)
+
+            if(last_recv_heartbeat):
+                last_recv_heartbeat_time = time.time()
+                _feedback = controls_msgs.DroneControlFeedback(last_recv_heartbeat.status)
+                self._server.publish_feedback(_feedback)
+
+                if(last_recv_heartbeat.status == 3):
+                    return
+
+            if(time.time() - last_recv_heartbeat_time > 5):
+                return
+
+        # We have a classification
+
+        _result = controls_msgs.DroneControlResult(classification_msg.classification)
+        self._server.set_succeeded(_result)
+
+    def preempt_cbk(self):
+        self._server.set_preempted()
+
+def main():
+    rospy.init_node('drone_controller_server')
+    server = TaskServer(rospy.get_name())
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()

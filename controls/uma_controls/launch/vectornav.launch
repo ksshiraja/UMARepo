@@ -1,0 +1,15 @@
+<!-- 
+  Launches the vectornav driver, which publishes a variety of different
+  things under /vectornav. It also runs the vectornav tf publisher, which
+  takes /odometry/filtered and publishes a tf transform from map to base_link
+-->
+
+<launch>
+    <remap from="vectornav/Odom" to="odometry/filtered" />
+
+    <node pkg="vectornav" type="vnpub" name="vectornav" output="screen" > 
+      <rosparam command="load" file="$(find uma_controls)/cfg/vectornav-vn300.yaml" />	  
+    </node>	
+
+    <node pkg="uma_controls" type="vectornav_tf_publisher" name="vectornav_tf_publisher" output="screen" /> 
+</launch>

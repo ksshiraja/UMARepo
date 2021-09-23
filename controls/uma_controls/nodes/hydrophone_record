@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+import argparse
+from hydrophone import record, RecordingFormats
+import arrow
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Record hydrophone data")
+    parser.add_argument("time", type=int, help="Length of recording in seconds")
+    parser.add_argument("--file", "-f", help="File to write out to")
+    parser.add_argument("--format-size", "-s", type=int, choices=[8, 16, 24, 32], default=24, help="Recording byte size format")
+    parser.add_argument("--num-channels", "-n", type=int, default=1, help="Number of recording channels")
+    parser.add_argument("--rate", "-r", type=int, default=44100, help="Sampling rate of audio")
+    parser.add_argument("--chunk-size", "-c", type=int, default=1024, help="Chunk size of audio frame")
+
+    args = parser.parse_args()
+    sz_to_fmt = {
+        8: RecordingFormats.Int8,
+        16: RecordingFormats.Int16,
+        24: RecordingFormats.Int24,
+        32: RecordingFormats.Int32
+    }
+    if not args.file:
+	args.file = "capture-{}.wav".format(arrow.utcnow().timestamp)
+    recording = record(args.time, format=sz_to_fmt[args.format_size], num_channels=args.num_channels,
+                        rate=args.rate, chunk_size=args.chunk_size)
+    filename = recording.write(filename=args.file)
+    print(filename)
+

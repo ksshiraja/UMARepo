@@ -1,0 +1,86 @@
+gps_tty: "/dev/uma_gps"
+gps_baudrate: 19200
+gps_ros_channel: "/gps/fix"
+
+imu_tty: "/dev/uma-imu"
+imu_baudrate: 115200
+imu_ros_channel: "/imu/data"
+
+lynx_tty: "/dev/uma-ssc32u"
+lynx_baudrate: 115200
+lynx_ros_channel: "/control/thrusters"
+lynx_input_pub_topic_name: "/button_pressed"
+battery_level_ros_channel: "/control/battery_level"
+
+# This needs to be configured based on ports used on the Lynx Board
+# Regardless of port numbers, code-wise they are ordered [left, right, forward, back]
+thruster_left: 4
+thruster_right: 2
+thruster_forward: 1
+thruster_back: 3
+
+max_thruster_outputs: [0.50, 0.50, 0.15, 0.15]
+
+# ------------- Motion Controller Tuning -------------
+
+# Please visit the wiki for a tuning explanation
+# https://gitlab.eecs.umich.edu/uma/UMARepo/-/wikis/Motion%20Controller
+
+# [[10000, 0, 0, 0, 0, 0],
+#  [0, 10000, 0, 0, 0, 0],
+#  [0, 0, 821, 0, 0, 0],
+#  [0, 0, 0, 1000, 0, 0],
+#  [0, 0, 0, 0, 1000, 0],
+#  [0, 0, 0, 0, 0, 131]]
+lqr_Q: [10000, 0, 0, 0, 0, 0, 0, 10000, 0, 0, 0, 0, 0, 0, 821, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 131]
+
+# [[1, 0, 0, 0],
+#  [0, 1, 0, 0],
+#  [0, 0, 8, 0],
+#  [0, 0, 0, 8]]
+lqr_R: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 8, 0, 0, 0, 0, 8]
+lqr_rho: 10  # Scalar
+
+# [[1, 1],
+#  [1, 1],
+#  [1, 1]]
+lqr_D: [10.3, 22.4, 40.0, 0.0, 50.0, 0.0]
+
+lqr_mass: 21.0  # kg
+lqr_i_z: 2.7782501  # kg * m^2
+lqr_a: [0.1524, 0.1524, 0.3048, 0.3048]  # m
+
+# ------------- Motion Controller Tuning -------------
+
+hedgehog_id: 6
+indoor_publish_rate: 16
+
+SM:
+  - 1.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+bias:
+  - 0.0
+  - 0.0
+  - 0.0
+
+SM_old:
+  - 0.9987112103446897
+  - -0.001808251553614484
+  - -0.009622805109514881
+  - 0.02112073338753638
+  - -1.002592968398735
+  - -0.03211570890401137
+  - 0.01590519470950744
+  - 0.03464283739493063
+  - 1.000065100103241
+bias_old:
+  - -0.06712389882456388
+  - -0.1097061055682714
+  - 0.278344197581768

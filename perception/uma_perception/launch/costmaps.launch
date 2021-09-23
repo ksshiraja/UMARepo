@@ -1,0 +1,13 @@
+<!--
+  This file launches a costmap. It will not run properly if it does not have
+  a map -> base_link transform and a base_link -> velodyne transform
+-->
+
+
+<launch>
+  <rosparam file="$(find uma_perception)/cfg/shared_costmap_params.yaml" command="load" /> 
+  <rosparam file="$(find uma_perception)/cfg/local_costmap_params.yaml" command="load" />
+  <rosparam file="$(find uma_perception)/cfg/global_costmap_params.yaml" command="load" />
+
+  <node pkg="uma_perception" type="costmaps" respawn="true" name="costmaps" />
+</launch>

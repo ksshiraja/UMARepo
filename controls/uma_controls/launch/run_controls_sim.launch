@@ -1,0 +1,15 @@
+<launch>
+    <rosparam file="$(find uma_controls)/params.yml" />
+
+<!--    <node name="fake_navsat_transform" pkg="robot_localization" type="navsat_transform_node">
+        <param name="frequency" value="10" />
+        <param name="use_odometry_yaw" value="false" />
+        <param name="wait_for_datum" value="false" />
+        <param name="publish_filtered_gps" value="true" />
+        <param name="broadcast_utm_transform" value="true" />
+        <param name="broadcast_utm_transform_as_parent" value="false" />
+        <param name="zero_altitude" value="true" />
+    </node> -->
+
+    <node name="fake_utm_transform" pkg="tf" type="static_transform_publisher" args="-166021.443179 0 0 0 0 0 map utm 1" />
+</launch>

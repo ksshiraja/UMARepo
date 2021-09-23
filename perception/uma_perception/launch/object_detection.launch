@@ -1,0 +1,7 @@
+<!--
+  This file launches every node needed to run the object detection pipeline
+-->
+
+<launch>
+ <node pkg="uma_perception" type="object_detector" respawn="true" name="object_detector"/>
+</launch>

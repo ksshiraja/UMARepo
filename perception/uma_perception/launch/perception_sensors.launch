@@ -1,0 +1,11 @@
+<!--
+  This file launches the drivers for all perception sensors on the boat
+-->
+
+<launch>
+  <group ns="velodyne">
+    <include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch" />
+  </group>
+  <rosparam file="$(find uma_perception)/cfg/camera.yaml" command="load" /> 
+  <node pkg="usb_cam" respawn="true" type="usb_cam_node" name="camera" />
+</launch>

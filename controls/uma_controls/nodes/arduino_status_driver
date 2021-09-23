@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+
+import serial
+import rospy
+from std_msgs.msg import Bool
+
+if __name__ == '__main__':
+    #check for ros params, else use defaults
+    port = rospy.get_param("arduino_tty", "/dev/uma-arduino")
+    baud = rospy.get_param("arduino_baudrate", 9600)
+
+    interface = serial.Serial(port, baud, timeout=1000)
+
+    #rospy setup
+    rospy.init_node("umaduino_status_reader", anonymous=False)
+    est = rospy.Publisher("estop_triggered", Bool)
+    amt = rospy.Publisher("autonomous_mode", Bool)
+
+    s = "D\n";    
+    while not rospy.is_shutdown():
+        s = interface.readline()
+        estop = Bool(s[0] == 'C' or s[0] == 'D')
+        auto = Bool(s[0] == 'A' or s[0] == 'C')
+        est.publish(estop)
+        amt.publish(auto)

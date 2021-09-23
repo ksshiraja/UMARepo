@@ -1,0 +1,4 @@
+<launch>
+    <node name="motion_controller_driver" pkg="uma_controls" type="motion_controller_driver.py" output="screen">
+    </node>
+</launch>

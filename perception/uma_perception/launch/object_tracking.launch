@@ -1,0 +1,7 @@
+<!--
+  This file launches every node needed to run the object tracking pipeline
+-->
+
+<launch>
+  <node pkg="uma_perception" type="object_tracker" respawn="true" name="object_tracker" />
+</launch>

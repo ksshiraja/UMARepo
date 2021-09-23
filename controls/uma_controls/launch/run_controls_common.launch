@@ -1,0 +1,5 @@
+<launch>
+    <rosparam file="$(find uma_controls)/params.yml" />
+    <include file="$(find uma_controls)/launch/controls_transforms.launch" />
+    <include file="$(find uma_controls)/launch/motion_controller.launch" />
+</launch>
